@@ -1,0 +1,21 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+          cache: pip
+      # Solo lo que importan retrieval.py y config.py: requirements.txt arrastra
+      # marker-pdf (torch, varios GB) y los tests no lo necesitan.
+      - run: pip install pytest ruff qdrant-client==1.19.0 openai==2.54.0 python-dotenv==1.2.3
+      - run: ruff check .
+      - run: python -m pytest -q

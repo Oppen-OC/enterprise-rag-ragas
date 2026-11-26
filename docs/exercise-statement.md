@@ -1,0 +1,251 @@
+<!-- Enunciado original del curso *Enterprise Data & AI Architectures* (UPV), Módulo 5, copiado sin cambios salvo la ruta de la imagen. Este repo es la solución, no el enunciado. -->
+
+# Exercise 1: Building Enterprise Retrieval-Augmented Generation (RAG)
+
+## 🏆 Project Objective
+Build and deploy a production-ready, high-performance Retrieval-Augmented Generation (RAG) application using modern open-source Python tools and a vector database. The application should ingest unstructured PDF documents (containing text and tables), chunk and embed the content, index it into a vector store, and expose it via a clean, conversational streaming Chat UI.
+
+## 🛠️ System Architecture
+
+The following diagram outlines the data flows and system layers you will construct:
+
+![Enterprise RAG System Architecture](./img/arquitectura-de-referencia-enunciado.png)
+
+## ⚙️ Detailed Implementation Steps
+
+### 1. Data Processing Stack (Ingestion Pipeline)
+Your python pipeline must handle raw PDF documents, extract text and tabular structures, and chunk them semantically.
+
+*   **Extraction with [Marker](https://github.com/AdeelH/maker)**: Write a script `ingest_pdf.py` that takes a PDF, converts it to clean markdown, and ensures tables are output in standard markdown table format.
+*   **Chunking with [Chonkie](https://github.com/bhavinjawade/chonkie)**: Import Chonkie to segment your markdown content. Use Chonkie’s semantic or token-based chunkers (e.g., `SDChunker` or `TokenChunker`) to create chunks of ~500 tokens with a 10% overlap, ensuring header contexts and tables are not abruptly cut off.
+
+### 2. Vector Database Setup & Indexing
+Deploy a local vector store to index the generated chunks along with metadata.
+
+*   **Qdrant Container Setup**: Define a service in `docker-compose.yml`:
+    ```yaml
+    version: '3.8'
+    services:
+      qdrant:
+        image: qdrant/qdrant:latest
+        container_name: qdrant_db
+        ports:
+          - "6333:6333"
+          - "6334:6334"
+        volumes:
+          - ./qdrant_storage:/qdrant/storage
+    ```
+*   **Embedding & Indexing Script**:
+    *   Create a Qdrant collection named `enterprise_docs` with the correct vector dimensions (e.g., `384` for `all-MiniLM-L6-v2` or `1536` for OpenAI's `text-embedding-3-small`).
+    *   Write a Python script `index_vectors.py` to embed the text chunks and upsert them to Qdrant.
+    *   **Payload Metadata**: Ensure each point upserted into Qdrant contains a payload with `source_file`, `page_number`, `raw_text`, and `chunk_id`.
+
+### 3. Conversational Front-End (Chat UI)
+Create a responsive, user-friendly conversational interface.
+
+*   **Build the [Chainlit](https://docs.chainlit.io) Application**: Write an app file `app.py` that:
+    1.  Listens for incoming messages from the user (`@cl.on_message`).
+    2.  Embeds the user's query using the same embedding model.
+    3.  Queries Qdrant to retrieve the top `k` (e.g., 3-5) most relevant context chunks.
+    4.  Formats a system prompt templates incorporating the retrieved context chunks.
+    5.  Sends the prompt to your LLM and streams the text response back to the Chainlit UI in real-time.
+
+## 🚀 Optional Production Tasks (Advanced)
+
+For bonus points, implement these production-grade optimizations:
+
+### 1. Hybrid Search
+*   Configure Qdrant to use both dense vector queries and sparse vectors (such as BM25 using Qdrant’s sparse indexing capabilities) to enhance keyword matching for tables and technical codes.
+
+### 2. LLM Observability with [Langfuse](https://langfuse.com/)
+*   Deploy Langfuse via Docker Compose.
+*   Integrate Langfuse SDK callbacks into your Chainlit application to monitor latency, track cost per prompt/completion token, and log LLM prompt inputs and outputs.
+
+### 3. LLM Routing via [LiteLLM Gateway](https://github.com/BerriAI/litellm)
+*   Deploy LiteLLM to serve as a unified OpenAI-compatible API gateway.
+*   Use it to handle load-balancing, fallback models (e.g., fall back to Anthropic Claude if OpenAI GPT fails), and rate-limiting.
+
+### 4. Workflow Orchestration
+*   Automate your data processing pipeline (ingestion, parsing, chunking, and embedding indexing) using a workflow orchestration tool (e.g., Apache Airflow, Prefect, or Dagster).
+*   Create a pipeline DAG that automatically schedules and triggers the extraction and indexing steps when new PDF documents are added to a source directory.
+
+## 📤 Project Deliverables
+
+1.  **Deliverable 1: Architecture Design**
+    *   An architecture diagram showing all integrated components (including optional ones if implemented).
+2.  **Deliverable 2: Code Repository**
+    *   The `docker-compose.yml` file.
+    *   Python scripts for parsing, chunking, indexing (`ingest_pdf.py`, `index_vectors.py`), and the Chainlit frontend (`app.py`).
+    *   A `requirements.txt` containing pinned versions of `marker`, `chonkie`, `qdrant-client`, `chainlit`, and helper libraries.
+3.  **Deliverable 3: UI Run Proof**
+    *   A short video recording (WebP/MP4) or a set of screenshots showing the Chainlit UI in action, specifically demonstrating how the RAG model answers queries using context extracted from PDF tables.
+
+## 📚 References & Further Reading
+*   [Marker Github Repository](https://github.com/AdeelH/maker) - PDF to markdown converter tool.
+*   [Chonkie Github Repository](https://github.com/bhavinjawade/chonkie) - Lightweight, semantic chunking library for RAG.
+*   [Qdrant Vector Database Documentation](https://qdrant.tech/documentation/) - Official Qdrant vector database documentation.
+*   [Chainlit Documentation](https://docs.chainlit.io/) - Conversational AI user interface library for Python.
+*   [LiteLLM Documentation](https://docs.litellm.ai/) - Unified gateway interface for multiple LLM providers.
+*   [Langfuse Observability Documentation](https://langfuse.com/docs) - Open source LLM engineering platform for tracking prompts and latency.
+*   [Apache Airflow Documentation](https://airflow.apache.org/) - Workflow management and scheduling platform.
+*   [Prefect Documentation](https://docs.prefect.io/) - Workflow orchestration engine.
+*   [Dagster Documentation](https://docs.dagster.io/) - Cloud-native data orchestrator.
+
+
+# Exercise 2: Evaluating RAG Pipelines with Ragas
+
+## 🏆 Project Objective
+Learn how to use **Ragas** (Retrieval Augmented Generation Assessment), a leading framework for evaluating RAG applications. You will set up an evaluation dataset, compute the core Ragas metrics, and analyze the performance of a pipeline to diagnose whether the retriever or the generator is the bottleneck.
+
+---
+
+## 📊 Core Ragas Metrics Explained
+
+Ragas uses an "LLM-as-a-judge" approach to calculate scores between `0` and `1`. The framework evaluates your system along two main axes: **Generation** (how well the LLM answered) and **Retrieval** (how well the vector search retrieved relevant info).
+
+```
+          ┌──────────────────────────────────────────┐
+          │                 Question                 │
+          └─────┬──────────────────────────────┬─────┘
+                │                              │
+        (Answer Relevance)             (Context Recall)
+                │                              │
+                ▼                              ▼
+  ┌──────────────────────────┐   ┌──────────────────────────┐
+  │     Generated Answer     ├───┼─────────► Context        │
+  └──────────────────────────┘   │     (Faithfulness)       │
+                                 └──────────────────────────┘
+```
+
+1.  **Faithfulness (Generation)**
+    *   *What it measures*: Groundedness. It checks if all claims in the generated answer are supported *only* by the retrieved context (detects hallucinations).
+    *   *Example*:
+        *   **Context**: *"Paris is the capital of France and has 2 million residents."*
+        *   **Answer**: *"The capital of France is Paris, which has a population of 5 million."*
+        *   **Result**: Low Faithfulness (the population claim is not in the context).
+2.  **Answer Relevance (Generation)**
+    *   *What it measures*: Answer quality. It checks if the answer addresses the actual user question rather than drifting or being redundant.
+    *   *Example*:
+        *   **Question**: *"How do I install python?"*
+        *   **Answer**: *"Python is a popular programming language created in 1991 by Guido van Rossum."*
+        *   **Result**: Low Answer Relevance (while true, it does not answer the installation instructions query).
+3.  **Context Recall (Retrieval)**
+    *   *What it measures*: Completeness. It checks if the retrieved context contains all the necessary information required to construct the ground-truth answer.
+    *   *Example*:
+        *   **Ground Truth**: *"The company was founded in 2015 by Jane Doe and John Smith."*
+        *   **Retrieved Context**: *"Jane Doe founded the company in 2015."*
+        *   **Result**: Low Context Recall (missing John Smith).
+4.  **Context Precision (Retrieval)**
+    *   *What it measures*: Signal-to-noise ratio and ranking. It checks if the most relevant retrieved chunks are ranked at the top of the context list.
+
+---
+
+## ⚙️ Step-by-Step Implementation
+
+### Step 1: Install Dependencies
+Create a Python virtual environment and install `ragas` along with Hugging Face `datasets` and `pandas` for handling table outputs:
+```bash
+pip install ragas datasets pandas
+```
+
+### Step 2: Set Up Environment Variables
+Ragas requires an LLM to evaluate the outputs. By default, it uses OpenAI, but you can configure it for any gateway (e.g., LiteLLM). Set your OpenAI key:
+```bash
+export OPENAI_API_KEY="your-api-key"
+```
+
+### Step 3: Prepare the Evaluation Dataset
+Ragas expects a dataset containing four fields:
+*   `question`: The input query.
+*   `contexts`: The retrieved text chunks (represented as a list of strings).
+*   `answer`: The generated answer.
+*   `ground_truth`: The ideal, reference answer.
+
+Create a Python script `evaluate_rag.py` and set up a sample dataset:
+
+```python
+import os
+import pandas as pd
+from datasets import Dataset
+from ragas import evaluate
+from ragas.metrics import (
+    faithfulness,
+    answer_relevance,
+    context_recall,
+    context_precision,
+)
+
+# 1. Sample dataset mimicking RAG outputs
+data = {
+    "question": [
+        "What is the company policy on remote work?",
+        "When was the company founded and by whom?",
+    ],
+    "contexts": [
+        [
+            "Employees are allowed to work remotely up to 3 days a week. Core hours are 10 AM to 4 PM."
+        ],
+        [
+            "The company was incorporated in October 2018.",
+            "Our founder, Alice Johnson, started the firm in her garage."
+        ],
+    ],
+    "answer": [
+        "You can work from home up to three days per week, as long as you are available during core hours.",
+        "The company was founded in October 2018.",
+    ],
+    "ground_truth": [
+        "Employees can work remotely up to 3 days per week with core hours between 10 AM and 4 PM.",
+        "The company was founded in October 2018 by Alice Johnson.",
+    ],
+}
+
+dataset = Dataset.from_dict(data)
+```
+
+### Step 4: Run the Evaluation
+Append the evaluation call and print the output in `evaluate_rag.py`:
+
+```python
+# 2. Run the evaluation
+print("Running Ragas evaluation...")
+result = evaluate(
+    dataset=dataset,
+    metrics=[
+        faithfulness,
+        answer_relevance,
+        context_precision,
+        context_recall,
+    ],
+)
+
+# 3. Inspect results
+df = result.to_pandas()
+print("\n--- Evaluation Scores Per Query ---")
+print(df[["question", "faithfulness", "answer_relevance", "context_precision", "context_recall"]])
+
+print("\n--- Average Scores ---")
+print(result)
+```
+
+Run the evaluation:
+```bash
+python evaluate_rag.py
+```
+
+---
+
+## 📤 Project Deliverables
+
+1.  **Deliverable 1: Code Repository**
+    *   The complete `evaluate_rag.py` script.
+2.  **Deliverable 2: Evaluation Results Table**
+    *   The printed output table containing the scores for all 4 metrics on the sample dataset.
+3.  **Deliverable 3: Performance Analysis**
+    *   Write a short analysis based on the output scores. If `faithfulness` is low, what changes should you make to your system? If `context_recall` is low, how would you address it?
+
+## 📚 References & Further Reading
+*   [Ragas Documentation](https://docs.ragas.io/) - Official Ragas framework documentation.
+*   [Ragas Key Metrics Guide](https://docs.ragas.io/en/stable/concepts/metrics/index.html) - In-depth breakdown of evaluation metrics.
+*   [Hugging Face Datasets Documentation](https://huggingface.co/docs/datasets/index) - Guide for creating and preparing datasets.
+*   [Pandas Documentation](https://pandas.pydata.org/docs/) - Data manipulation and analysis library in Python.
