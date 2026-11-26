@@ -1,4 +1,4 @@
-# RAG empresarial — Módulo 5
+# RAG empresarial
 
 Chat sobre el capítulo *Lakeflow Connect: SQL Server Connector* del
 **Big Book of Data Engineering** (páginas 44–58).

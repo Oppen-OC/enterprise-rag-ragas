@@ -4,6 +4,8 @@ __pycache__/
 .chainlit/
 .files/
 qdrant_storage/
-# El markdown extraido SI se versiona: es el paso caro (Marker) y permite
-# reproducir la ingesta sin GPU ni Docker. Los chunks se regeneran al vuelo.
-data/processed/*.chunks.jsonl
+# Todo lo derivado del PDF de Databricks se regenera con ingest_pdf.py y no se versiona.
+data/processed/
+
+# El PDF del corpus es de Databricks y no se versiona (ver README, "Corpus").
+data/raw/*.pdf

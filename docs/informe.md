@@ -1,8 +1,8 @@
-# Módulo 5 — Análisis de la evaluación con Ragas
+# Análisis de la evaluación con Ragas
 
 Juez: `qwen2.5:7b-instruct` en local (Ollama). Métricas: `faithfulness`,
 `answer_relevancy`, `llm_context_precision_with_reference`, `context_recall`.
-Datos completos en `resultados_ragas_sample.csv` y `resultados_ragas_rag.csv`.
+Datos completos en `resultados_ragas_sample.csv`, `resultados_ragas_rag_dense.csv` y `resultados_ragas_rag_hybrid.csv` (en la raíz del repo).
 
 ## 1. Dataset de ejemplo del enunciado
 
