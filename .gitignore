@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+.env
+.chainlit/
+.files/
+qdrant_storage/
+# El markdown extraido SI se versiona: es el paso caro (Marker) y permite
+# reproducir la ingesta sin GPU ni Docker. Los chunks se regeneran al vuelo.
+data/processed/*.chunks.jsonl

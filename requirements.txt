@@ -1,0 +1,32 @@
+# IMPORTANTE: marker-pdf arrastra torch, y pip instala por defecto la build de
+# CPU, con la que Marker tarda mas de 10 minutos por pagina. Si tienes GPU
+# NVIDIA, reinstala torch con soporte CUDA despues de este requirements.txt:
+#
+#   pip uninstall -y torch torchvision
+#   pip install --index-url https://download.pytorch.org/whl/cu130 torch==2.13.0 torchvision
+#
+# (sustituye cu130 por la version de CUDA de tu driver, ver `nvidia-smi`).
+# Sin GPU, usa el backend alternativo: ingest_pdf.py --backend pymupdf
+
+# --- Ejercicio 1: pipeline RAG -------------------------------------------
+marker-pdf==2.0.0          # extraccion PDF -> markdown (backend por defecto)
+pymupdf4llm==1.28.2        # extraccion alternativa, ligera y sin modelos
+chonkie==1.7.0             # chunking semantico / por tokens
+qdrant-client==1.19.0      # cliente del vector store
+fastembed==0.8.0           # vectores dispersos BM25 para la busqueda hibrida
+chainlit==2.12.0           # interfaz de chat con streaming
+openai==2.54.0             # cliente compatible OpenAI (apunta a Ollama por defecto)
+python-dotenv==1.2.3
+
+# --- Ejercicio 2: evaluacion ---------------------------------------------
+ragas==0.4.3
+datasets==5.0.1
+pandas==3.0.5
+
+# Ragas 0.4.3 no acota la version de langchain y con la rama 1.x falla al
+# importar (ModuleNotFoundError: langchain_community.chat_models.vertexai).
+# Estos cuatro pines son obligatorios.
+langchain==0.3.30
+langchain-community==0.3.31
+langchain-core==0.3.86
+langchain-openai==0.3.35

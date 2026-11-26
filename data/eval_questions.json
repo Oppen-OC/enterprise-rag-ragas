@@ -1,0 +1,22 @@
+[
+  {
+    "question": "What SQL Server version is required to use change tracking with Lakeflow Connect?",
+    "ground_truth": "SQL Server 2012 or a later version must be enabled to use change tracking, although version 2016 or newer is recommended."
+  },
+  {
+    "question": "Which Unity Catalog permissions does the user or service principal need to create the ingestion pipeline?",
+    "ground_truth": "CREATE CONNECTION on the metastore, USE CATALOG on the target catalog, USE SCHEMA plus CREATE TABLE and CREATE VOLUME on an existing schema or CREATE SCHEMA on the target catalog, and unrestricted permissions to create clusters or a custom compute policy."
+  },
+  {
+    "question": "Which SQL Server database variations does Lakeflow Connect support?",
+    "ground_truth": "Microsoft Azure SQL Database, Microsoft Azure SQL Managed Instance, Amazon RDS for SQL Server, SQL Server on GCP, Microsoft SQL Server running on Azure VMs and Amazon EC2, and on-premises SQL Server accessed through Azure ExpressRoute or AWS Direct Connect."
+  },
+  {
+    "question": "Which SQL Server edition is required to use CDC on versions earlier than SQL Server 2016?",
+    "ground_truth": "Versions earlier than SQL Server 2016 require the Enterprise edition to use CDC."
+  },
+  {
+    "question": "How is the traffic between the client interface and the control plane protected?",
+    "ground_truth": "It is encrypted in transit using TLS 1.2 or later."
+  }
+]
